@@ -1,30 +1,42 @@
 # ThreeFingerScreenshot
 
-A sleek, native Swift package inspired completely by the popular OnePlus three-finger swipe gesture. This package allows you to effortlessly integrate an intuitive, global three-finger swipe-down gesture into your iOS applications to capture beautiful screenshots, complete with a visual flash, an interactive floating thumbnail, and automatic saving to the user's Photo Library.
+[![Swift](https://img.shields.io/badge/Swift-5.5+-orange.svg)](https://swift.org)[![iOS](https://img.shields.io/badge/iOS-14.0+-blue.svg)](https://developer.apple.com/ios/)[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
+
+A sleek, native Swift package inspired completely by the popular OnePlus three-finger swipe gesture.
+
+This package allows you to effortlessly integrate an intuitive, global three-finger swipe-down gesture into your iOS applications to capture beautiful app snapshots. It features a seamless "UI freeze" during the drag, a visual camera flash, an interactive floating thumbnail, and automatic saving to the user's Photo Library.
 
 ## Features
 
-- **Global 3-Finger Gesture:** Seamlessly recognizes a three-finger pan gesture anywhere in your app without interfering with standard interactions.
-- **Native Polish:** Provides an immersive screen-flash animation and a fluid, interactive thumbnail preview that mimics the native iOS screenshot experience.
-- **Auto-Save to Photos:** Automatically prompts for photo library permissions and saves the captured screenshot directly to the user's camera roll.
-- **Lightweight & Idiomatic:** Written entirely in Swift using native `UIKit` primitives and structured for easy adoption in both SwiftUI and UIKit environments.
+- **Global 3-Finger Gesture:** Seamlessly recognizes a three-finger pan gesture anywhere in your app. Smart delegate handling ensures it never interferes with standard SwiftUI Lists or UIKit ScrollViews.
+- **Instant UI Freeze:** The exact millisecond the user touches the screen with three fingers, the UI visually "freezes," giving the user immediate, tactile feedback that the screenshot capture has begun.
+- **Interactive Apple-Style Thumbnail:** After capture, a thumbnail shrinks to the bottom-left corner. It automatically dismisses after 2.5 seconds, or the user can actively swipe it left into oblivion.
+- **Auto-Save to Photos:** Built on the modern, thread-safe `PHPhotoLibrary` framework. Automatically prompts for add-only photo permissions and drops the screenshot directly into the camera roll.
+- **Lightweight & Idiomatic:** Written entirely in Swift using native `UIKit` primitives and structured for easy adoption in both `SwiftUI` and `UIKit` environments.
+
+## Requirements
+
+- iOS 14.0+
+- Xcode 13.0+
+- Swift 5.5+
 
 ## Installation
 
 You can install `ThreeFingerScreenshot` using Swift Package Manager (SPM).
 
 In Xcode:
+
 1. Go to **File > Add Package Dependencies...**
 2. Enter the repository URL for this package.
 3. Select the version or branch you wish to integrate and add it to your project.
 
 ## Implementation Guide
 
-To use `ThreeFingerScreenshot`, you must attach the global `ScreenshotManager` to your application's primary `UIWindow`. 
+To use `ThreeFingerScreenshot`, you must attach the global `ScreenshotManager` to your application's primary `UIWindow`.
 
 ### SwiftUI
 
-In a SwiftUI lifecycle app, the best place to configure the gesture is by accessing the underlying `UIWindow` within your main `App` entry point. Here is a complete example of how to inject it into your application hierarchy:
+In a SwiftUI lifecycle app, the best place to configure the gesture is by accessing the underlying `UIWindow` within your main `App` entry point using the `.onAppear` modifier.
 
 ```swift
 import SwiftUI
@@ -32,27 +44,27 @@ import ThreeFingerScreenshot
 
 @main
 struct YourApp: App {
-    var body: some Scene {
-        WindowGroup {
-            ContentView()
-                .onAppear {
-                    setupScreenshotGesture()
-                }
+  var body: some Scene {
+    WindowGroup {
+      ContentView()
+        .onAppear {
+          setupScreenshotGesture()
         }
+    }
+  }
+
+  private func setupScreenshotGesture() {
+    // Safely extract the primary window from the active scene
+    guard let windowScene = UIApplication.shared.connectedScenes.first as? UIWindowScene,
+          let window = windowScene.windows.first
+    else {
+      print("Failed to find UIWindow for ScreenshotManager")
+      return
     }
 
-    private func setupScreenshotGesture() {
-        // Safely extract the primary window from the active scene
-        guard let windowScene = UIApplication.shared.connectedScenes.first as? UIWindowScene,
-              let window = windowScene.windows.first 
-        else {
-            print("Failed to find UIWindow for ScreenshotManager")
-            return
-        }
-        
-        // Attach the global screenshot listener to the window
-        ScreenshotManager.shared.attach(to: window)
-    }
+    // Attach the global screenshot listener to the window
+    ScreenshotManager.shared.attach(to: window)
+  }
 }
 ```
 
@@ -61,25 +73,29 @@ struct YourApp: App {
 If you are using a standard `AppDelegate` or `SceneDelegate`, you can easily attach it to the window property when the app finishes launching or the scene connects:
 
 ```swift
-import UIKit
 import ThreeFingerScreenshot
+import UIKit
 
 class SceneDelegate: UIResponder, UIWindowSceneDelegate {
-    var window: UIWindow?
+  var window: UIWindow?
 
-    func scene(_ scene: UIScene, willConnectTo session: UISceneSession, options connectionOptions: UIScene.ConnectionOptions) {
-        guard let windowScene = (scene as? UIWindowScene) else { return }
-        let window = UIWindow(windowScene: windowScene)
-        
-        // Setup your root view controller here
-        // ...
-        
-        self.window = window
-        window.makeKeyAndVisible()
-        
-        // Attach the screenshot gesture globally
-        ScreenshotManager.shared.attach(to: window)
-    }
+  func scene(
+    _ scene: UIScene,
+    willConnectTo session: UISceneSession,
+    options connectionOptions: UIScene.ConnectionOptions
+  ) {
+    guard let windowScene = (scene as? UIWindowScene) else { return }
+    let window = UIWindow(windowScene: windowScene)
+
+    // Setup your root view controller here
+    // ...
+
+    self.window = window
+    window.makeKeyAndVisible()
+
+    // Attach the screenshot gesture globally
+    ScreenshotManager.shared.attach(to: window)
+  }
 }
 ```
 
@@ -90,9 +106,11 @@ class SceneDelegate: UIResponder, UIWindowSceneDelegate {
 The core orchestrator of the gesture recognition and screenshot pipeline. It is enforced as a thread-safe singleton that strictly operates on the `@MainActor`.
 
 #### `static let shared: ScreenshotManager`
-Access the global, shared instance of the screenshot manager. This is the only way to interact with the manager.
+
+Access the global, shared instance of the screenshot manager.
 
 #### `func attach(to window: UIWindow)`
+
 Configures the screenshot gesture recognizer and attaches it globally to the provided window.
 
 - **Parameters:**
@@ -108,3 +126,7 @@ Because this package automatically saves screenshots to the iOS Photo Library, y
   Provide a clear string explaining to the user why the app needs to save photos, e.g., *"This app requires access to save three-finger screenshots to your Photos."*
 
 Without this key, the application will fail to save the image and will print a permissions error in the console.
+
+## License
+
+This project is licensed under the MIT License.

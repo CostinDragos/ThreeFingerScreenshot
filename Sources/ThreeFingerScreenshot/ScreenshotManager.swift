@@ -8,20 +8,46 @@
 import Photos
 import UIKit
 
+/// A thread-safe, global manager responsible for handling the three-finger screenshot gesture.
+///
+/// `ScreenshotManager` mimics the native iOS screenshot functionality. When a three-finger pan gesture
+/// is recognized on the attached window, it captures the current screen hierarchy, displays a visual flash,
+/// animates a thumbnail preview to the bottom-left corner of the screen, and automatically saves the
+/// captured image to the user's Photo Library.
 @MainActor
 public class ScreenshotManager: NSObject {
+  
+  /// The shared, global instance of the screenshot manager.
+  /// Use this instance to attach the gesture recognizer to your application's primary window.
   public static let shared = ScreenshotManager()
 
+  /// The primary window the gesture is attached to.
   private weak var hostWindow: UIWindow?
+  
+  /// A task used to automatically dismiss the animated thumbnail after a short delay.
   private var dismissTask: DispatchWorkItem?
+  
+  /// An overlay view used to freeze the screen visually while the three-finger gesture is actively dragging.
   private var frozenOverlay: UIImageView?
+  
+  /// The image representation of the screen captured at the exact moment the gesture began.
   private var frozenScreenshot: UIImage?
+  
+  /// A collection of active gesture recognizers that were firing simultaneously with the three-finger pan.
+  /// Used to temporarily pause them and re-enable them to prevent UI conflicts during the swipe.
   private var simultaneousGestures = NSHashTable<UIGestureRecognizer>.weakObjects()
 
+  /// Private initializer to enforce the singleton pattern.
   override private init() {
     super.init()
   }
 
+  /// Configures and attaches the global three-finger pan gesture recognizer to the specified window.
+  ///
+  /// Call this method once during your application's lifecycle, typically during scene connection
+  /// or when your root SwiftUI view appears.
+  ///
+  /// - Parameter window: The `UIWindow` to attach the gesture recognizer to. Typically the application's key window.
   public func attach(to window: UIWindow) {
     hostWindow = window
 
@@ -36,6 +62,9 @@ public class ScreenshotManager: NSObject {
     window.addGestureRecognizer(panGesture)
   }
 
+  /// Handles the continuous state updates of the three-finger pan gesture.
+  ///
+  /// - Parameter gesture: The `UIPanGestureRecognizer` responsible for tracking the three-finger swipe.
   @objc private func handleThreeFingerPan(_ gesture: UIPanGestureRecognizer) {
     guard let window = hostWindow else { return }
 
@@ -77,6 +106,7 @@ public class ScreenshotManager: NSObject {
     }
   }
 
+  /// Removes the static overlay created during the pan gesture, smoothly unfreezing the UI.
   private func unfreezeScreen() {
     UIView.animate(withDuration: 0.2) {
       self.frozenOverlay?.alpha = 0
@@ -87,6 +117,9 @@ public class ScreenshotManager: NSObject {
     }
   }
 
+  /// Dismisses the floating thumbnail preview when the user swipes it away.
+  ///
+  /// - Parameter gesture: The `UISwipeGestureRecognizer` attached to the thumbnail container.
   @objc private func handleThumbnailSwipe(_ gesture: UISwipeGestureRecognizer) {
     guard let view = gesture.view else { return }
     dismissTask?.cancel()
@@ -103,6 +136,11 @@ public class ScreenshotManager: NSObject {
 // MARK: - Private Helpers
 
 extension ScreenshotManager {
+  
+  /// Captures a static image representation of the entire view hierarchy.
+  ///
+  /// - Parameter view: The `UIView` (typically the root `UIWindow`) to capture.
+  /// - Returns: A `UIImage` containing the rendered hierarchy, or `nil` if the context could not be established.
   private func captureSnapshot(of view: UIView) -> UIImage? {
     let renderer = UIGraphicsImageRenderer(bounds: view.bounds)
     return renderer.image { _ in
@@ -110,6 +148,9 @@ extension ScreenshotManager {
     }
   }
 
+  /// Produces a quick, full-screen white flash animation to provide visual feedback for the screenshot.
+  ///
+  /// - Parameter window: The window to present the flash overlay on.
   private func flashScreen(window: UIWindow) {
     let flashView = UIView(frame: window.bounds)
     flashView.backgroundColor = .white
@@ -123,6 +164,14 @@ extension ScreenshotManager {
     }
   }
 
+  /// Creates and animates a small thumbnail of the captured screenshot into the bottom-left corner of the screen.
+  ///
+  /// The thumbnail includes a drop shadow and a border, mirroring the native iOS screenshot design.
+  /// It automatically dismisses after a short delay unless swiped away by the user.
+  ///
+  /// - Parameters:
+  ///   - image: The captured screenshot image to display.
+  ///   - window: The window to present and animate the thumbnail inside.
   private func animateThumbnail(image: UIImage, window: UIWindow) {
     let containerView = UIView(frame: window.bounds)
     containerView.layer.shadowColor = UIColor.black.cgColor
@@ -181,6 +230,9 @@ extension ScreenshotManager {
     }
   }
 
+  /// Requests the necessary permissions and saves the provided image to the iOS Photo Library.
+  ///
+  /// - Parameter image: The `UIImage` to be saved to the user's camera roll.
   private func saveToPhotos(image: UIImage) {
     PHPhotoLibrary.requestAuthorization(for: .addOnly) { status in
       guard status == .authorized || status == .limited else {
@@ -204,6 +256,17 @@ extension ScreenshotManager {
 // MARK: - UIGestureRecognizerDelegate
 
 extension ScreenshotManager: UIGestureRecognizerDelegate {
+  
+  /// Asks the delegate if two gesture recognizers should be allowed to recognize gestures simultaneously.
+  ///
+  /// This implementation ensures that the three-finger screenshot gesture does not consume interactions
+  /// meant for underlying scroll views or controls. It adds the conflicting gesture to the tracking list
+  /// so it can be temporarily disabled when the three-finger swipe initiates.
+  ///
+  /// - Parameters:
+  ///   - gestureRecognizer: An instance of a subclass of the abstract base class `UIGestureRecognizer`.
+  ///   - otherGestureRecognizer: Another instance of a subclass of the abstract base class `UIGestureRecognizer`.
+  /// - Returns: `true` to allow simultaneous recognition, `false` otherwise. This implementation always returns `true`.
   public func gestureRecognizer(
     _ gestureRecognizer: UIGestureRecognizer,
     shouldRecognizeSimultaneouslyWith otherGestureRecognizer: UIGestureRecognizer,
