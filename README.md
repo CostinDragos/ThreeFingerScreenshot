@@ -6,6 +6,8 @@ A sleek, native Swift package inspired completely by the popular OnePlus three-f
 
 This package allows you to effortlessly integrate an intuitive, global three-finger swipe-down gesture into your iOS applications to capture beautiful app snapshots. It features a seamless "UI freeze" during the drag, a visual camera flash, an interactive floating thumbnail, and automatic saving to the user's Photo Library.
 
+https://github.com/user-attachments/assets/1e13a859-6813-4e21-9d1d-7409f5ac9b43
+
 ## Features
 
 - **Global 3-Finger Gesture:** Seamlessly recognizes a three-finger pan gesture anywhere in your app. Smart delegate handling ensures it never interferes with standard SwiftUI Lists or UIKit ScrollViews.
