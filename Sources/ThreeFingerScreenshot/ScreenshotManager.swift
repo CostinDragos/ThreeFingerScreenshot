@@ -25,18 +25,6 @@ public class ScreenshotManager: NSObject {
   public func attach(to window: UIWindow) {
     hostWindow = window
 
-    // The code below shifts the UI downwards, e.g. you have a form
-    #if false
-      let swipeGesture = UISwipeGestureRecognizer(
-        target: self,
-        action: #selector(handleThreeFingerSwipe),
-      )
-      swipeGesture.direction = .down
-      swipeGesture.numberOfTouchesRequired = 3
-      swipeGesture.delegate = self
-      window.addGestureRecognizer(swipeGesture)
-    #endif
-
     // This new version uses a Pan Gesture to track the drag continuously
     let panGesture = UIPanGestureRecognizer(
       target: self,
@@ -47,18 +35,6 @@ public class ScreenshotManager: NSObject {
     panGesture.delegate = self
     window.addGestureRecognizer(panGesture)
   }
-
-  // The method below is used with the disabled gesture recognizer from above.
-  #if false
-    @objc private func handleThreeFingerSwipe() {
-      guard let window = hostWindow else { return }
-      guard let screenshot = captureSnapshot(of: window) else { return }
-
-      flashScreen(window: window)
-      animateThumbnail(image: screenshot, window: window)
-      saveToPhotos(image: screenshot)
-    }
-  #endif
 
   @objc private func handleThreeFingerPan(_ gesture: UIPanGestureRecognizer) {
     guard let window = hostWindow else { return }
